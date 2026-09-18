@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jwt-lib — Estudo de Implementação de JWT e JWKS em Java 25+</title>
+    <meta name="description" content="Projeto de estudo prático e implementação de referência das RFCs 7515, 7517, 7518 e 7519 em Java 25+ com foco em segurança e APIs nativas da JVM.">
+    
+    <!-- Open Graph / Meta -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="jwt-lib — Estudo de Implementação de JWT em Java">
+    <meta property="og:description" content="Estudo prático de engenharia de software implementando as RFCs de JWT, JWS e JWKS em Java 25+.">
+
+    <style>
+        :root {
+            --bg-color: #090b10;
+            --panel-bg: rgba(15, 20, 31, 0.75);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --surface-color: #0f141f;
+            --surface-hover: #151c2c;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --brand-400: #a78bfa;
+            --brand-500: #8b5cf6;
+            --brand-600: #7c3aed;
+            --brand-700: #6d28d9;
+            --cyan-400: #22d3ee;
+            --emerald-400: #34d399;
+            --amber-400: #fbbf24;
+            --red-400: #f87171;
+            --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        ::selection {
+            background-color: var(--brand-500);
+            color: #ffffff;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        /* Ambient Glow */
+        .glow-accent {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(124, 58, 237, 0.12) 0%, rgba(6, 182, 212, 0.04) 50%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Glass Panel */
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--panel-border);
+            border-radius: 1rem;
+        }
+
+        /* Layout Container */
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
+        }
+
+        /* Header */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(9, 11, 16, 0.85);
+            backdrop-filter: blur(12px);
+        }
+
+        .header-inner {
+            height: 4rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 2.25rem;
+            height: 2.25rem;
+            border-radius: 0.75rem;
+            background: linear-gradient(135deg, var(--brand-600), #06b6d4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+        }
+
+        .brand-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge-tag {
+            font-size: 0.7rem;
+            font-family: var(--font-mono);
+            padding: 0.15rem 0.5rem;
+            border-radius: 9999px;
+            background: #1e293b;
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        nav {
+            display: none;
+            gap: 1.75rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        @media (min-width: 768px) {
+            nav {
+                display: flex;
+            }
+        }
+
+        nav a:hover {
+            color: #ffffff;
+            transition: color 0.15s;
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 0.9rem;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background-color: var(--brand-600);
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--brand-500);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background-color: var(--surface-color);
+            color: var(--text-primary);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--surface-hover);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Hero */
+        .hero-section {
+            padding: 4.5rem 1rem 3.5rem;
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        .hero-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.9rem;
+            border-radius: 9999px;
+            background: rgba(124, 58, 237, 0.1);
+            border: 1px solid rgba(124, 58, 237, 0.25);
+            font-size: 0.75rem;
+            color: var(--brand-400);
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-title {
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: -0.025em;
+            line-height: 1.15;
+            margin-bottom: 1.25rem;
+        }
+
+        @media (min-width: 640px) {
+            .hero-title {
+                font-size: 3.25rem;
+            }
+        }
+
+        .gradient-text {
+            background: linear-gradient(to right, var(--brand-400), #a5b4fc, var(--cyan-400));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-description {
+            max-width: 42rem;
+            margin: 0 auto 2rem;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .hero-badges {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .badge-item {
+            padding: 0.3rem 0.75rem;
+            border-radius: 0.375rem;
+            background: var(--surface-color);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        /* Section titles */
+        .section-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .section-tag {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--brand-400);
+            margin-bottom: 0.35rem;
+        }
+
+        .section-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        /* Grid Cards */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+        }
+
+        @media (min-width: 640px) {
+            .cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .cards-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .feature-card {
+            padding: 1.5rem;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(124, 58, 237, 0.4);
+        }
+
+        .card-icon-wrapper {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 0.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.55;
+        }
+
+        /* Code Block Tabs */
+        .tabs-header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .tab-btn {
+            padding: 0.45rem 0.9rem;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: var(--surface-color);
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .tab-btn.active {
+            background: var(--brand-600);
+            color: #ffffff;
+            border-color: transparent;
+            box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+        }
+
+        .code-box {
+            background: #0b0f17;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 0.85rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .code-box-header {
+            background: #0f141f;
+            padding: 0.6rem 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+        }
+
+        .code-content {
+            padding: 1.25rem;
+            font-family: var(--font-mono);
+            font-size: 0.825rem;
+            line-height: 1.6;
+            color: #cbd5e1;
+            overflow-x: auto;
+            white-space: pre;
+        }
+
+        /* Syntax Color Tokens */
+        .c-kw { color: #f472b6; font-weight: 600; }
+        .c-type { color: #67e8f9; }
+        .c-str { color: #a7f3d0; }
+        .c-cm { color: #64748b; font-style: italic; }
+        .c-fn { color: #93c5fd; }
+        .c-num { color: #fde047; }
+        .c-tag { color: #f472b6; }
+        .c-attr { color: #93c5fd; }
+
+        .btn-copy {
+            padding: 0.25rem 0.6rem;
+            border-radius: 0.375rem;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            transition: all 0.15s;
+        }
+
+        .btn-copy:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+        }
+
+        /* Playground */
+        .playground-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+        }
+
+        @media (min-width: 1024px) {
+            .playground-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .jwt-textarea {
+            width: 100%;
+            height: 180px;
+            padding: 0.85rem;
+            border-radius: 0.65rem;
+            background: #0b0f17;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            resize: none;
+            outline: none;
+            line-height: 1.5;
+        }
+
+        .jwt-textarea:focus {
+            border-color: var(--brand-500);
+        }
+
+        .decoded-panel {
+            background: #0b0f17;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 0.65rem;
+            padding: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .decoded-panel-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .decoded-pre {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: #cbd5e1;
+            max-height: 140px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* Table */
+        .styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.85rem;
+        }
+
+        .styled-table th {
+            background: #0f141f;
+            padding: 0.75rem 1.25rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .styled-table td {
+            padding: 0.9rem 1.25rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .styled-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            background: var(--brand-600);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.6rem 1rem;
+            border-radius: 0.6rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            animation: slideIn 0.2s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #28344e;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b4c70;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Ambient glow effects -->
+    <div class="glow-accent" style="top: -100px; left: 50%; transform: translateX(-50%);"></div>
+    <div class="glow-accent" style="top: 800px; left: -100px;"></div>
+    <div class="glow-accent" style="top: 1800px; right: -100px;"></div>
+
+    <!-- Navigation Bar -->
+    <header>
+        <div class="container">
+            <div class="header-inner">
+                <div class="brand-logo">
+                    <div class="logo-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                        </svg>
+                    </div>
+                    <span class="brand-title">
+                        jwt-lib
+                        <span class="badge-tag">estudo v1.0.0</span>
+                    </span>
+                </div>
+
+                <nav>
+                    <a href="#about">Sobre o Estudo</a>
+                    <a href="#concepts">Conceitos</a>
+                    <a href="#quickstart">Exemplos</a>
+                    <a href="#interactive-tool" style="color: var(--cyan-400);">Playground</a>
+                    <a href="#rfcs">RFCs</a>
+                    <a href="#architecture">Arquitetura</a>
+                    <a href="#author">Autor</a>
+                </nav>
+
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <a href="https://central.sonatype.com/" target="_blank" rel="noopener noreferrer" class="btn-action btn-secondary" style="display: none;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        </svg>
+                        Maven Central
+                    </a>
+                    <a href="https://github.com/bapadua/jwt-lib" target="_blank" rel="noopener noreferrer" class="btn-action btn-primary">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"></path>
+                        </svg>
+                        Repositório
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main style="flex: 1; z-index: 10;">
+
+        <!-- Hero Section -->
+        <section id="about" class="hero-section">
+            <div class="container" style="max-width: 900px;">
+                <div class="hero-pill">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                        <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                    </svg>
+                    Projeto de Estudo & Portfólio de Engenharia de Software
+                </div>
+
+                <h1 class="hero-title">
+                    Estudo de Implementação de <br/>
+                    <span class="gradient-text">JSON Web Tokens & JWKS em Java 25+</span>
+                </h1>
+
+                <p class="hero-description">
+                    Laboratório prático explorando os padrões <strong>RFC 7515, 7517, 7518 e 7519</strong>. 
+                    Implementação focada em <em>Security-by-Design</em>, imutabilidade e uso de recursos nativos da JVM 
+                    (criptografia padrão, HTTP/2 nativo e sealed interfaces).
+                </p>
+
+                <div class="hero-badges">
+                    <span class="badge-item" style="color: var(--amber-400);">☕ Java 25+</span>
+                    <span class="badge-item" style="color: var(--emerald-400);">✓ 110 Testes JUnit 5</span>
+                    <span class="badge-item" style="color: var(--cyan-400);">📄 4 RFCs IETF</span>
+                    <span class="badge-item" style="color: #60a5fa;">⚖️ Apache 2.0</span>
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem;">
+                    <a href="#quickstart" class="btn-action btn-primary" style="padding: 0.65rem 1.25rem;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="16 18 22 12 16 6"></polyline>
+                            <polyline points="8 6 2 12 8 18"></polyline>
+                        </svg>
+                        Ver Exemplos de Código
+                    </a>
+                    <a href="#interactive-tool" class="btn-action btn-secondary" style="padding: 0.65rem 1.25rem;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cyan-400)" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Experimentar Playground
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Concepts Explored Section -->
+        <section id="concepts" style="padding: 3rem 0;">
+            <div class="container">
+                <div class="section-header">
+                    <div class="section-tag">Fundamentos</div>
+                    <h2 class="section-title">Conceitos Abordados na Implementação</h2>
+                </div>
+
+                <div class="cards-grid">
+                    <!-- Card 1 -->
+                    <div class="feature-card">
+                        <div class="card-icon-wrapper" style="background: rgba(248, 113, 113, 0.1); color: var(--red-400); border: 1px solid rgba(248, 113, 113, 0.2);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </div>
+                        <h3 class="card-title">Segurança em Tipos Fortes</h3>
+                        <p class="card-desc">
+                            Separação estrita de <code style="color: var(--brand-400); font-family: var(--font-mono);">SecretKey</code> e chaves assimétricas para mitigar <em>Algorithm Confusion</em>, verificação em tempo constante contra <em>timing attacks</em> e rejeição estrita de <code style="color: var(--brand-400); font-family: var(--font-mono);">alg=none</code>.
+                        </p>
+                    </div>
+
+                    <!-- Card 2 -->
+                    <div class="feature-card">
+                        <div class="card-icon-wrapper" style="background: rgba(34, 211, 238, 0.1); color: var(--cyan-400); border: 1px solid rgba(34, 211, 238, 0.2);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                                <rect x="9" y="9" width="6" height="6"></rect>
+                                <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"></path>
+                            </svg>
+                        </div>
+                        <h3 class="card-title">Recursos Nativos da JVM</h3>
+                        <p class="card-desc">
+                            Uso das bibliotecas criptográficas padrão (<code style="color: var(--brand-400); font-family: var(--font-mono);">java.security</code>) e do cliente <code style="color: var(--brand-400); font-family: var(--font-mono);">HttpClient</code> HTTP/2 nativo para resolução de chaves remotas.
+                        </p>
+                    </div>
+
+                    <!-- Card 3 -->
+                    <div class="feature-card">
+                        <div class="card-icon-wrapper" style="background: rgba(139, 92, 246, 0.1); color: var(--brand-400); border: 1px solid rgba(139, 92, 246, 0.2);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"></path>
+                            </svg>
+                        </div>
+                        <h3 class="card-title">JWKS & Rotação de Chaves</h3>
+                        <p class="card-desc">
+                            Provedor com cache configurável (TTL) e suporte a <em>Refresh-on-Miss</em> para absorver rotações de chave em IdPs (Keycloak, Auth0, Cognito) de forma transparente.
+                        </p>
+                    </div>
+
+                    <!-- Card 4 -->
+                    <div class="feature-card">
+                        <div class="card-icon-wrapper" style="background: rgba(251, 191, 36, 0.1); color: var(--amber-400); border: 1px solid rgba(251, 191, 36, 0.2);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                            </svg>
+                        </div>
+                        <h3 class="card-title">Algorithm Pinning</h3>
+                        <p class="card-desc">
+                            Restrição explícita no parser dos algoritmos aceitos para evitar falsificação por rebaixamento de cifra ou modificação maliciosa de cabeçalhos.
+                        </p>
+                    </div>
+
+                    <!-- Card 5 -->
+                    <div class="feature-card">
+                        <div class="card-icon-wrapper" style="background: rgba(52, 211, 153, 0.1); color: var(--emerald-400); border: 1px solid rgba(52, 211, 153, 0.2);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                                <polyline points="2 17 12 22 22 17"></polyline>
+                                <polyline points="2 12 12 17 22 12"></polyline>
+                            </svg>
+                        </div>
+                        <h3 class="card-title">Imutabilidade & Fluent API</h3>
+                        <p class="card-desc">
+                            Objetos <code style="color: var(--brand-400); font-family: var(--font-mono);">Jwt</code> imutáveis pós-validação com cópias defensivas de coleções e arrays, com builders e parsers fluentes.
+                        </p>
+                    </div>
+
+                    <!-- Card 6 -->
+                    <div class="feature-card">
+                        <div class="card-icon-wrapper" style="background: rgba(96, 165, 250, 0.1); color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.2);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="card-title">Sealed Interfaces</h3>
+                        <p class="card-desc">
+                            Uso de <code style="color: var(--brand-400); font-family: var(--font-mono);">sealed interface</code> para restringir as implementações criptográficas (<code style="color: var(--brand-400); font-family: var(--font-mono);">Signer</code>, <code style="color: var(--brand-400); font-family: var(--font-mono);">Verifier</code>) estritamente ao escopo interno do pacote.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Installation Section -->
+        <section style="padding: 2.5rem 0;">
+            <div class="container" style="max-width: 900px;">
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <h2 style="font-size: 1.1rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 0.5rem;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand-400)" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                Coordenadas de Instalação
+                            </h2>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.2rem;">Artefato publicado para testes e estudos no Maven Central</p>
+                        </div>
+
+                        <div style="display: flex; background: #0f141f; padding: 0.25rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.08);">
+                            <button onclick="switchInstallTab('maven')" id="tab-btn-maven" class="tab-btn active" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Maven</button>
+                            <button onclick="switchInstallTab('gradle-groovy')" id="tab-btn-gradle-groovy" class="tab-btn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Gradle (Groovy)</button>
+                            <button onclick="switchInstallTab('gradle-kotlin')" id="tab-btn-gradle-kotlin" class="tab-btn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;">Gradle (Kotlin)</button>
+                        </div>
+                    </div>
+
+                    <!-- Maven Code -->
+                    <div id="install-maven" class="code-box">
+                        <button onclick="copySnippet('code-maven')" class="btn-copy" style="position: absolute; top: 0.5rem; right: 0.5rem; z-index: 5;">Copiar</button>
+                        <div id="code-maven" class="code-content"><span class="c-tag">&lt;dependency&gt;</span>
+    <span class="c-tag">&lt;groupId&gt;</span>io.github.bapadua<span class="c-tag">&lt;/groupId&gt;</span>
+    <span class="c-tag">&lt;artifactId&gt;</span>jwt-lib<span class="c-tag">&lt;/artifactId&gt;</span>
+    <span class="c-tag">&lt;version&gt;</span>1.0.0<span class="c-tag">&lt;/version&gt;</span>
+<span class="c-tag">&lt;/dependency&gt;</span></div>
+                    </div>
+
+                    <!-- Gradle Groovy Code -->
+                    <div id="install-gradle-groovy" class="code-box" style="display: none;">
+                        <button onclick="copySnippet('code-gradle-groovy')" class="btn-copy" style="position: absolute; top: 0.5rem; right: 0.5rem; z-index: 5;">Copiar</button>
+                        <div id="code-gradle-groovy" class="code-content"><span class="c-fn">dependencies</span> {
+    <span class="c-fn">implementation</span> <span class="c-str">'io.github.bapadua:jwt-lib:1.0.0'</span>
+}</div>
+                    </div>
+
+                    <!-- Gradle Kotlin Code -->
+                    <div id="install-gradle-kotlin" class="code-box" style="display: none;">
+                        <button onclick="copySnippet('code-gradle-kotlin')" class="btn-copy" style="position: absolute; top: 0.5rem; right: 0.5rem; z-index: 5;">Copiar</button>
+                        <div id="code-gradle-kotlin" class="code-content"><span class="c-fn">dependencies</span> {
+    <span class="c-fn">implementation</span>(<span class="c-str">"io.github.bapadua:jwt-lib:1.0.0"</span>)
+}</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quickstart & Code Examples Section -->
+        <section id="quickstart" style="padding: 2.5rem 0;">
+            <div class="container">
+                <div class="section-header">
+                    <div class="section-tag">Guia Prático</div>
+                    <h2 class="section-title">Exemplos de Utilização</h2>
+                </div>
+
+                <div class="tabs-header">
+                    <button onclick="switchCodeTab('hmac')" id="tab-code-hmac" class="tab-btn active">1. HMAC Simétrico (HS256)</button>
+                    <button onclick="switchCodeTab('rsa')" id="tab-code-rsa" class="tab-btn">2. RSA Assimétrico (RS256)</button>
+                    <button onclick="switchCodeTab('jwks')" id="tab-code-jwks" class="tab-btn">3. JWKS Remoto</button>
+                    <button onclick="switchCodeTab('pinning')" id="tab-code-pinning" class="tab-btn">4. Validações de Claims</button>
+                </div>
+
+                <!-- Tab 1: HMAC -->
+                <div id="example-hmac" class="code-box">
+                    <div class="code-box-header">
+                        <span>HmacExample.java — Assinatura e Validação Simétrica</span>
+                        <button onclick="copySnippet('code-example-hmac')" class="btn-copy">Copiar Código</button>
+                    </div>
+                    <div id="code-example-hmac" class="code-content"><span class="c-kw">import</span> com.github.bapadua.labs.jwt.Algorithm;
+<span class="c-kw">import</span> com.github.bapadua.labs.jwt.Jwt;
+<span class="c-kw">import</span> com.github.bapadua.labs.jwt.Jwts;
+<span class="c-kw">import</span> javax.crypto.spec.SecretKeySpec;
+<span class="c-kw">import</span> java.nio.charset.StandardCharsets;
+
+<span class="c-cm">// 1. Chave secreta com tipagem forte (mínimo 256 bits para HS256)</span>
+<span class="c-type">SecretKeySpec</span> secretKey = <span class="c-kw">new</span> <span class="c-type">SecretKeySpec</span>(
+    <span class="c-str">"sua-chave-secreta-de-estudo-com-pelo-menos-256-bits!"</span>.<span class="c-fn">getBytes</span>(StandardCharsets.UTF_8),
+    <span class="c-str">"HmacSHA256"</span>
+);
+
+<span class="c-cm">// 2. Construção e assinatura do token</span>
+<span class="c-type">String</span> token = Jwts.<span class="c-fn">builder</span>()
+    .<span class="c-fn">alg</span>(Algorithm.HS256)
+    .<span class="c-fn">signWith</span>(secretKey)
+    .<span class="c-fn">subject</span>(<span class="c-str">"usuario-123"</span>)
+    .<span class="c-fn">issuer</span>(<span class="c-str">"https://auth.meudominio.com"</span>)
+    .<span class="c-fn">audience</span>(<span class="c-str">"api://minha-api"</span>)
+    .<span class="c-fn">issuedNow</span>()
+    .<span class="c-fn">expiresInSeconds</span>(<span class="c-num">3600</span>) <span class="c-cm">// 1 hora</span>
+    .<span class="c-fn">id</span>()                   <span class="c-cm">// Gera UUID v4 automático para 'jti'</span>
+    .<span class="c-fn">claim</span>(<span class="c-str">"role"</span>, <span class="c-str">"ADMIN"</span>)
+    .<span class="c-fn">compact</span>();
+
+<span class="c-cm">// 3. Validação com verificação estrita e Algorithm Pinning</span>
+<span class="c-type">Jwt</span> jwt = Jwts.<span class="c-fn">parser</span>()
+    .<span class="c-fn">verifyWith</span>(secretKey)
+    .<span class="c-fn">requireAlgorithm</span>(Algorithm.HS256)
+    .<span class="c-fn">requireIssuer</span>(<span class="c-str">"https://auth.meudominio.com"</span>)
+    .<span class="c-fn">requireAudience</span>(<span class="c-str">"api://minha-api"</span>)
+    .<span class="c-fn">parse</span>(token);
+
+System.out.<span class="c-fn">println</span>(<span class="c-str">"Subject: "</span> + jwt.<span class="c-fn">getSubject</span>());
+System.out.<span class="c-fn">println</span>(<span class="c-str">"Role: "</span> + jwt.<span class="c-fn">getStringClaim</span>(<span class="c-str">"role"</span>));</div>
+                </div>
+
+                <!-- Tab 2: RSA -->
+                <div id="example-rsa" class="code-box" style="display: none;">
+                    <div class="code-box-header">
+                        <span>RsaExample.java — Assinatura com PrivateKey e Verificação com PublicKey</span>
+                        <button onclick="copySnippet('code-example-rsa')" class="btn-copy">Copiar Código</button>
+                    </div>
+                    <div id="code-example-rsa" class="code-content"><span class="c-kw">import</span> com.github.bapadua.labs.jwt.Algorithm;
+<span class="c-kw">import</span> com.github.bapadua.labs.jwt.Jwt;
+<span class="c-kw">import</span> com.github.bapadua.labs.jwt.Jwts;
+<span class="c-kw">import</span> java.security.KeyPair;
+<span class="c-kw">import</span> java.security.KeyPairGenerator;
+
+<span class="c-cm">// Gera par de chaves RSA (2048 bits)</span>
+<span class="c-type">KeyPairGenerator</span> kpg = KeyPairGenerator.<span class="c-fn">getInstance</span>(<span class="c-str">"RSA"</span>);
+kpg.<span class="c-fn">initialize</span>(<span class="c-num">2048</span>);
+<span class="c-type">KeyPair</span> keyPair = kpg.<span class="c-fn">generateKeyPair</span>();
+
+<span class="c-cm">// 1. Emissor: Assina com a Chave Privada</span>
+<span class="c-type">String</span> token = Jwts.<span class="c-fn">builder</span>()
+    .<span class="c-fn">alg</span>(Algorithm.RS256)
+    .<span class="c-fn">signWith</span>(keyPair.<span class="c-fn">getPrivate</span>())
+    .<span class="c-fn">keyId</span>(<span class="c-str">"auth-key-01"</span>)
+    .<span class="c-fn">subject</span>(<span class="c-str">"usuario-corporativo"</span>)
+    .<span class="c-fn">expiresInSeconds</span>(<span class="c-num">1800</span>)
+    .<span class="c-fn">compact</span>();
+
+<span class="c-cm">// 2. Consumidor: Valida exclusivamente com a Chave Pública</span>
+<span class="c-type">Jwt</span> jwt = Jwts.<span class="c-fn">parser</span>()
+    .<span class="c-fn">verifyWith</span>(keyPair.<span class="c-fn">getPublic</span>())
+    .<span class="c-fn">requireAlgorithm</span>(Algorithm.RS256)
+    .<span class="c-fn">requireKeyId</span>(<span class="c-str">"auth-key-01"</span>)
+    .<span class="c-fn">parse</span>(token);
+
+System.out.<span class="c-fn">println</span>(<span class="c-str">"Validado com sucesso para: "</span> + jwt.<span class="c-fn">getSubject</span>());</div>
+                </div>
+
+                <!-- Tab 3: Remote JWKS -->
+                <div id="example-jwks" class="code-box" style="display: none;">
+                    <div class="code-box-header">
+                        <span>RemoteJwksExample.java — Consulta de Chaves em Endpoints OIDC</span>
+                        <button onclick="copySnippet('code-example-jwks')" class="btn-copy">Copiar Código</button>
+                    </div>
+                    <div id="code-example-jwks" class="code-content"><span class="c-kw">import</span> com.github.bapadua.labs.jwt.Algorithm;
+<span class="c-kw">import</span> com.github.bapadua.labs.jwt.Jwt;
+<span class="c-kw">import</span> com.github.bapadua.labs.jwt.Jwts;
+<span class="c-kw">import</span> com.github.bapadua.labs.jwt.internal.jwk.RemoteJwksKeyProvider;
+<span class="c-kw">import</span> com.github.bapadua.labs.jwt.internal.jwk.http.HttpJwksFetcher;
+<span class="c-kw">import</span> java.time.Duration;
+
+<span class="c-cm">// 1. Fetcher HTTP/2 nativo com timeouts definidos</span>
+<span class="c-type">HttpJwksFetcher</span> fetcher = HttpJwksFetcher.<span class="c-fn">of</span>(
+    <span class="c-str">"https://auth.meudominio.com/realms/master/protocol/openid-connect/certs"</span>,
+    Duration.<span class="c-fn">ofSeconds</span>(<span class="c-num">3</span>),
+    Duration.<span class="c-fn">ofSeconds</span>(<span class="c-num">5</span>)
+);
+
+<span class="c-cm">// 2. Provedor com cache e recarregamento automático (TTL 10 min)</span>
+<span class="c-type">RemoteJwksKeyProvider</span> keyProvider = RemoteJwksKeyProvider.<span class="c-fn">of</span>(fetcher, Duration.<span class="c-fn">ofMinutes</span>(<span class="c-num">10</span>));
+
+<span class="c-cm">// 3. Validação resolvendo a chave pública dinamicamente pelo 'kid'</span>
+<span class="c-type">Jwt</span> jwt = Jwts.<span class="c-fn">parser</span>()
+    .<span class="c-fn">keyProvider</span>(keyProvider)
+    .<span class="c-fn">requireAlgorithm</span>(Algorithm.RS256)
+    .<span class="c-fn">requireIssuer</span>(<span class="c-str">"https://auth.meudominio.com/realms/master"</span>)
+    .<span class="c-fn">clockSkewSeconds</span>(<span class="c-num">60</span>)
+    .<span class="c-fn">parse</span>(tokenRecebido);
+
+System.out.<span class="c-fn">println</span>(<span class="c-str">"Usuário validado via JWKS: "</span> + jwt.<span class="c-fn">getSubject</span>());</div>
+                </div>
+
+                <!-- Tab 4: Pinning & Claims -->
+                <div id="example-pinning" class="code-box" style="display: none;">
+                    <div class="code-box-header">
+                        <span>SecurityFeatures.java — Validações de Claims e Tolerância Temporal</span>
+                        <button onclick="copySnippet('code-example-pinning')" class="btn-copy">Copiar Código</button>
+                    </div>
+                    <div id="code-example-pinning" class="code-content"><span class="c-cm">// Validação de claims e tolerância no parsing</span>
+<span class="c-type">Jwt</span> jwt = Jwts.<span class="c-fn">parser</span>()
+    .<span class="c-fn">verifyWith</span>(publicKey)
+    <span class="c-cm">// Algorithm Pinning: aceita somente o algoritmo esperado</span>
+    .<span class="c-fn">requireAlgorithm</span>(Algorithm.RS256)
+    <span class="c-cm">// Validação de Emissor (iss) e Audiences (aud)</span>
+    .<span class="c-fn">requireIssuer</span>(<span class="c-str">"https://auth.exemplo.com"</span>)
+    .<span class="c-fn">requireAudience</span>(<span class="c-str">"api-faturamento"</span>, <span class="c-str">"api-gateway"</span>)
+    <span class="c-cm">// Validação do tipo (typ) no Header conforme RFC 9068</span>
+    .<span class="c-fn">requireType</span>(<span class="c-str">"JWT"</span>)
+    <span class="c-cm">// Key ID específico (kid)</span>
+    .<span class="c-fn">requireKeyId</span>(<span class="c-str">"key-2026-v1"</span>)
+    <span class="c-cm">// Clock Skew: tolerância para pequenos atrasos de relógio (ex: 30s)</span>
+    .<span class="c-fn">clockSkewSeconds</span>(<span class="c-num">30</span>)
+    .<span class="c-fn">parse</span>(token);</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive JWT Decoder / Playground Widget -->
+        <section id="interactive-tool" style="padding: 2.5rem 0;">
+            <div class="container">
+                <div class="glass-panel" style="padding: 1.5rem 2rem;">
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem;">
+                        <div>
+                            <div style="color: var(--cyan-400); font-size: 0.75rem; font-family: var(--font-mono); text-transform: uppercase; font-weight: 700; margin-bottom: 0.25rem;">
+                                Laboratório Interativo
+                            </div>
+                            <h2 style="font-size: 1.35rem; font-weight: 700; color: #fff;">Inspetor de JWT em Tempo Real</h2>
+                            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">Cole um token JWT para inspecionar os blocos decodificados (Header e Payload).</p>
+                        </div>
+
+                        <button onclick="loadSampleToken()" class="btn-action btn-secondary" style="font-size: 0.75rem;">
+                            Carregar Exemplo
+                        </button>
+                    </div>
+
+                    <div class="playground-grid">
+                        <!-- Left: Encoded Token Input -->
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                                <span>TOKEN CODIFICADO</span>
+                                <span style="font-weight: 400; color: var(--text-muted);">Header . Payload . Signature</span>
+                            </div>
+                            <textarea id="jwt-input" class="jwt-textarea" placeholder="Cole seu token JWT aqui..."></textarea>
+                            <div id="token-status" style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--emerald-400); margin-top: 0.5rem;">
+                                ✓ Token decodificado
+                            </div>
+                        </div>
+
+                        <!-- Right: Decoded Header & Payload -->
+                        <div>
+                            <div class="decoded-panel">
+                                <div class="decoded-panel-title" style="color: var(--red-400);">
+                                    <span>● HEADER</span>
+                                    <span id="header-alg-badge" class="badge-tag" style="color: var(--red-400);">HS256</span>
+                                </div>
+                                <div id="decoded-header" class="decoded-pre">{}</div>
+                            </div>
+
+                            <div class="decoded-panel" style="margin-bottom: 0;">
+                                <div class="decoded-panel-title" style="color: #f472b6;">
+                                    <span>● PAYLOAD</span>
+                                    <span id="exp-status-badge" class="badge-tag" style="color: var(--emerald-400);">exp: Ativo</span>
+                                </div>
+                                <div id="decoded-payload" class="decoded-pre">{}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RFC Compliance Matrix -->
+        <section id="rfcs" style="padding: 2.5rem 0;">
+            <div class="container" style="max-width: 900px;">
+                <div class="section-header">
+                    <div class="section-tag">Mapeamento</div>
+                    <h2 class="section-title">Conformidade com as Especificações RFC</h2>
+                </div>
+
+                <div class="glass-panel" style="overflow: hidden;">
+                    <table class="styled-table">
+                        <thead>
+                            <tr>
+                                <th>Especificação</th>
+                                <th>Título</th>
+                                <th>Implementação no estudo</th>
+                                <th style="text-align: right;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="font-family: var(--font-mono); color: var(--brand-400); font-weight: 600;">RFC 7515</td>
+                                <td style="color: #fff; font-weight: 500;">JSON Web Signature (JWS)</td>
+                                <td style="color: var(--text-secondary);">Compact Serialization, headers, validação e verificação</td>
+                                <td style="text-align: right; font-family: var(--font-mono); color: var(--emerald-400); font-weight: 600;">Implementado</td>
+                            </tr>
+                            <tr>
+                                <td style="font-family: var(--font-mono); color: var(--brand-400); font-weight: 600;">RFC 7517</td>
+                                <td style="color: #fff; font-weight: 500;">JSON Web Key (JWK)</td>
+                                <td style="color: var(--text-secondary);">Modelagem de JWK/JWKS, serialização JSON e conversões JCA</td>
+                                <td style="text-align: right; font-family: var(--font-mono); color: var(--emerald-400); font-weight: 600;">Implementado</td>
+                            </tr>
+                            <tr>
+                                <td style="font-family: var(--font-mono); color: var(--brand-400); font-weight: 600;">RFC 7518</td>
+                                <td style="color: #fff; font-weight: 500;">JSON Web Algorithms (JWA)</td>
+                                <td style="color: var(--text-secondary);">Algoritmos HS256/384/512, RS256/384/512 e Base64UInt</td>
+                                <td style="text-align: right; font-family: var(--font-mono); color: var(--emerald-400); font-weight: 600;">Implementado</td>
+                            </tr>
+                            <tr>
+                                <td style="font-family: var(--font-mono); color: var(--brand-400); font-weight: 600;">RFC 7519</td>
+                                <td style="color: #fff; font-weight: 500;">JSON Web Token (JWT)</td>
+                                <td style="color: var(--text-secondary);">Manipulação e validação de claims padrão (iss, sub, aud, exp, etc.)</td>
+                                <td style="text-align: right; font-family: var(--font-mono); color: var(--emerald-400); font-weight: 600;">Implementado</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture Breakdown -->
+        <section id="architecture" style="padding: 2.5rem 0;">
+            <div class="container" style="max-width: 900px;">
+                <div class="section-header">
+                    <div class="section-tag">Organização</div>
+                    <h2 class="section-title">Estrutura do Projeto</h2>
+                </div>
+
+                <div class="glass-panel" style="padding: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+                        <div class="code-box">
+                            <div class="code-box-header">
+                                <span>Árvore de Pacotes (com.github.bapadua.labs.jwt)</span>
+                            </div>
+                            <div class="code-content">com.github.bapadua.labs.jwt
+├── Jwts.java                   <span class="c-cm"># Ponto de entrada (builder / parser)</span>
+├── Jwt.java                    <span class="c-cm"># Modelo imutável do token decodificado</span>
+├── JwtBuilder.java             <span class="c-cm"># Fluent builder de criação</span>
+├── JwtParser.java              <span class="c-cm"># Pipeline de validação</span>
+├── Algorithm.java              <span class="c-cm"># Enum com tipagem forte</span>
+├── KeyProvider.java            <span class="c-cm"># Interface funcional de chaves</span>
+└── internal
+    ├── Signer.java             <span class="c-cm"># Sealed interface interna</span>
+    ├── Verifier.java           <span class="c-cm"># Sealed interface de verificação</span>
+    ├── HmacSigner.java         <span class="c-cm"># Motor HMAC (HS256/384/512)</span>
+    ├── RsaSigner.java          <span class="c-cm"># Motor RSA (RS256/384/512)</span>
+    ├── Json.java               <span class="c-cm"># Wrapper Jackson isolado</span>
+    └── jwk
+        ├── Jwk.java            <span class="c-cm"># Modelo JSON Web Key</span>
+        ├── Jwks.java           <span class="c-cm"># Modelo JSON Web Key Set</span>
+        ├── RemoteJwksKeyProvider.java <span class="c-cm"># Cache com refresh-on-miss</span>
+        └── http/HttpJwksFetcher.java  <span class="c-cm"># Cliente HTTP/2 nativo</span></div>
+                        </div>
+
+                        <div style="background: #0f141f; border: 1px solid rgba(255,255,255,0.06); padding: 1.25rem; border-radius: 0.75rem;">
+                            <h3 style="font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem;">Cobertura de Testes (JUnit 5)</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-secondary); line-height: 1.6;">
+                                A suíte conta com <strong>110 testes automatizados</strong> cobrindo testes ponta a ponta para HMAC e RSA, rejeição de algoritmos incorretos, expiração temporal com tolerância de clock skew, conversões JWK e concorrência multithread no cache de chaves remotas.
+                            </p>
+                            <div style="margin-top: 0.75rem; font-size: 0.75rem; font-family: var(--font-mono); color: var(--text-muted);">
+                                Executar localmente: <span style="color: #cbd5e1;">mvn test</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Author / Portfolio Section -->
+        <section id="author" style="padding: 2.5rem 0 3.5rem;">
+            <div class="container" style="max-width: 800px;">
+                <div class="glass-panel" style="padding: 2rem;">
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem;">
+                        <div style="width: 5rem; height: 5rem; border-radius: 1rem; background: linear-gradient(135deg, var(--brand-600), #a855f7, #06b6d4); padding: 2px; flex-shrink: 0;">
+                            <div style="width: 100%; height: 100%; background: #0f141f; border-radius: calc(1rem - 2px); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.5rem; color: #fff;">
+                                BP
+                            </div>
+                        </div>
+
+                        <div style="flex: 1; min-width: 260px;">
+                            <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--brand-400); margin-bottom: 0.25rem;">
+                                Autor & Desenvolvedor
+                            </div>
+                            <h3 style="font-size: 1.25rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem;">Bruno A. Padua</h3>
+                            <p style="font-size: 0.825rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 1rem;">
+                                Engenheiro de Software com foco no ecossistema Java/JVM, arquiteturas de microsserviços e padrões de segurança. Este projeto faz parte do meu portfólio prático de estudos sobre padrões IETF e criptografia na JVM.
+                            </p>
+
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                                <a href="https://github.com/bapadua" target="_blank" rel="noopener noreferrer" class="btn-action btn-secondary">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"></path>
+                                    </svg>
+                                    github.com/bapadua
+                                </a>
+                                <a href="mailto:bapadua.cloud@gmail.com" class="btn-action btn-secondary">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyan-400)" stroke-width="2">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                        <polyline points="22,6 12,13 2,6"></polyline>
+                                    </svg>
+                                    bapadua.cloud@gmail.com
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer style="border-top: 1px solid rgba(255,255,255,0.08); background: #090b10; padding: 1.5rem 0; z-index: 10;">
+        <div class="container" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; font-size: 0.75rem; color: var(--text-muted);">
+            <div>
+                Estudo prático por Bruno A. Padua — Licença Apache 2.0
+            </div>
+            <div style="display: flex; gap: 1.25rem;">
+                <a href="https://github.com/bapadua/jwt-lib" style="color: var(--text-secondary);">GitHub</a>
+                <a href="https://datatracker.ietf.org/doc/html/rfc7519" target="_blank" style="color: var(--text-secondary);">RFC 7519</a>
+                <a href="#quickstart" style="color: var(--text-secondary);">Exemplos</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive Scripts -->
+    <script>
+        // Installation Tabs
+        function switchInstallTab(type) {
+            const tabs = ['maven', 'gradle-groovy', 'gradle-kotlin'];
+            tabs.forEach(t => {
+                const el = document.getElementById('install-' + t);
+                const btn = document.getElementById('tab-btn-' + t);
+                if (t === type) {
+                    el.style.display = 'block';
+                    btn.classList.add('active');
+                } else {
+                    el.style.display = 'none';
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Code Examples Tabs
+        function switchCodeTab(type) {
+            const tabs = ['hmac', 'rsa', 'jwks', 'pinning'];
+            tabs.forEach(t => {
+                const el = document.getElementById('example-' + t);
+                const btn = document.getElementById('tab-code-' + t);
+                if (t === type) {
+                    el.style.display = 'block';
+                    btn.classList.add('active');
+                } else {
+                    el.style.display = 'none';
+                    btn.classList.remove('active');
+                }
+            });
+        }
+
+        // Copy Code Snippet helper
+        function copySnippet(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast("Código copiado!");
+            });
+        }
+
+        // Toast notification
+        function showToast(message) {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = '✓ ' + message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 2000);
+        }
+
+        // JWT Playground Real-time Decoder
+        const sampleToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6ImF1dGgta2V5LTAxIn0.eyJzdWIiOiJ1c2VyLTEyMzQ1IiwiaXNzIjoiaHR0cHM6Ly9hdXRoLm1ldWRvbWluaW8uY29tIiwiYXVkIjoiYXBpOi8vbWluaGEtYXBpIiwiaWF0IjoxNzM5ODUwMDAwLCJleHAiOjE5Mzk4NTAwMDAsImp0aSI6ImY0N2FjMTBiLTU4Y2MtNDM3Mi1hNTY3LTBlMDJmMjMzNDEwNiIsInJvbGUiOiJBRE1JTiIsImVtYWlsIjoidXN1YXJpb0Bkb21pbmlvLmNvbSJ9.e7X6Vf4K_w0YtG9eD1_k7R8bN5v9-L3pW1yZ8xQ2jKg";
+
+        function base64UrlDecode(str) {
+            str = str.replace(/-/g, '+').replace(/_/g, '/');
+            while (str.length % 4) {
+                str += '=';
+            }
+            try {
+                return decodeURIComponent(atob(str).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+            } catch (e) {
+                return atob(str);
+            }
+        }
+
+        function decodeAndRenderJwt(token) {
+            const trimmed = token.trim();
+            const parts = trimmed.split('.');
+            const headerEl = document.getElementById('decoded-header');
+            const payloadEl = document.getElementById('decoded-payload');
+            const algBadge = document.getElementById('header-alg-badge');
+            const expBadge = document.getElementById('exp-status-badge');
+            const statusEl = document.getElementById('token-status');
+
+            if (parts.length < 2) {
+                statusEl.innerHTML = '<span style="color: var(--amber-400);">⚠ Token inválido (formato esperado: header.payload.signature)</span>';
+                return;
+            }
+
+            try {
+                const headerJson = JSON.parse(base64UrlDecode(parts[0]));
+                const payloadJson = JSON.parse(base64UrlDecode(parts[1]));
+
+                headerEl.textContent = JSON.stringify(headerJson, null, 2);
+                payloadEl.textContent = JSON.stringify(payloadJson, null, 2);
+
+                if (headerJson.alg) {
+                    algBadge.textContent = headerJson.alg;
+                }
+
+                if (payloadJson.exp) {
+                    const expMs = payloadJson.exp * 1000;
+                    const isExpired = Date.now() > expMs;
+                    if (isExpired) {
+                        expBadge.style.color = "var(--red-400)";
+                        expBadge.textContent = "exp: Expirado";
+                    } else {
+                        expBadge.style.color = "var(--emerald-400)";
+                        expBadge.textContent = "exp: Ativo / Válido";
+                    }
+                } else {
+                    expBadge.textContent = "exp: N/A";
+                }
+
+                statusEl.innerHTML = '<span style="color: var(--emerald-400);">✓ Token decodificado com sucesso</span>';
+            } catch (err) {
+                statusEl.innerHTML = '<span style="color: var(--red-400);">✗ Erro ao decodificar JSON Base64Url</span>';
+            }
+        }
+
+        function loadSampleToken() {
+            const input = document.getElementById('jwt-input');
+            input.value = sampleToken;
+            decodeAndRenderJwt(sampleToken);
+        }
+
+        document.getElementById('jwt-input').addEventListener('input', (e) => {
+            decodeAndRenderJwt(e.target.value);
+        });
+
+        // Load sample token on startup
+        loadSampleToken();
+    </script>
+</body>
+</html>
